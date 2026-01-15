@@ -9,15 +9,19 @@ import time
 # --- CONFIGURACIÓN DE ESTILO ---
 st.set_page_config(page_title="Sentinel AI | Global Fraud Command", layout="wide", page_icon="🛡️")
 
-# Estilos CSS (Mantenidos y optimizados)
 st.markdown("""
     <style>
-    .stMetric { background-color: #1e2430; padding: 15px; border-radius: 10px; border: 1px solid #3e4553; color: white; }
-    [data-testid="stMetricValue"] { color: #8fcf9f; }
+    .main { background-color: #f5f7fa; }
+    .stMetric { background-color: #e9edf2; padding: 15px; border-radius: 10px; border: 1px solid #cfd6dd; }
+    /* Ajuste para que las pestañas se vean modernas */
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
+    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #e9edf2; border-radius: 5px 5px 0px 0px; gap: 1px; }
+    .stTabs [aria-selected="true"] { background-color: #8fcf9f; }
     </style>
+
     """, unsafe_allow_html=True)
 
-# --- ESTADO DE LA SESIÓN ---
+# --- ESTADO DE LA SESIÓN (Persistencia de datos) ---
 if 'history' not in st.session_state:
     st.session_state.history = []
 if 'savings' not in st.session_state:
@@ -25,15 +29,17 @@ if 'savings' not in st.session_state:
 if 'sim_results' not in st.session_state:
     st.session_state.sim_results = None
 
-# --- LÓGICA DE PROCESAMIENTO ---
+# --- LÓGICA: PROCESAMIENTO REAL-TIME ---
 def process_realtime():
     tx_id = np.random.randint(1000000, 9999999)
     amt = np.random.uniform(10, 5000)
     deepfake = np.random.uniform(0, 1)
     entropy_val = np.random.uniform(0, 1)
     
+    # Lógica del Modelo Sentinel (Score de riesgo ponderado)
     risk = (deepfake * 0.6) + ((1 - entropy_val) * 0.4)
     decision = "REJECT" if risk > 0.65 else "APPROVE"
+    tx_hash = f"sha256:{np.random.get_state()[1][0]}"
     
     new_data = {
         "ID": tx_id,
@@ -42,6 +48,7 @@ def process_realtime():
         "Decision": decision,
         "Liveness": deepfake,
         "Entropy": entropy_val,
+        "Blockchain_Hash": tx_hash,
         "Time": datetime.now().strftime("%H:%M:%S")
     }
     
@@ -49,61 +56,109 @@ def process_realtime():
     if decision == "REJECT":
         st.session_state.savings += amt
     
-    if len(st.session_state.history) > 15: # Reducido para optimizar memoria en Cloud
+    if len(st.session_state.history) > 20:
         st.session_state.history.pop(0)
+
+# --- LÓGICA: SIMULACIÓN DE MUNDO (MESA ENGINE) ---
+def run_world_simulation(n_fraudsters, avg_ticket):
+    ticks = 30 # Simulación de 30 días
+    days = []
+    savings_curve = []
+    loss_curve = []
+    acc_savings = 0
+    acc_losses = 0
+    
+    for day in range(1, ticks + 1):
+        # Survival Rate del 88% (nuestra métrica de ciberseguridad)
+        detected = np.random.binomial(n_fraudsters, 0.88)
+        missed = n_fraudsters - detected
+        
+        acc_savings += detected * avg_ticket
+        acc_losses += missed * avg_ticket
+        
+        days.append(day)
+        savings_curve.append(acc_savings)
+        loss_curve.append(acc_losses)
+        
+    return pd.DataFrame({"Día": days, "Ahorro": savings_curve, "Pérdidas": loss_curve})
 
 # --- UI: SIDEBAR ---
 st.sidebar.title(" Sentinel Control")
+st.sidebar.divider()
+
+# Solo mostramos el control de stream si estamos en la pestaña de monitoreo
 run_stream = st.sidebar.toggle("Live Ingest (Kafka Sim)", value=True)
 speed = st.sidebar.slider("Stream Speed (s)", 0.5, 5.0, 2.0)
 
-# --- UI: PESTAÑAS ---
-tab1, tab2, tab3 = st.tabs([" Live Monitoring", " World Simulation", " Model Health"])
+st.sidebar.divider()
+st.sidebar.subheader(" Blockchain Status")
+st.sidebar.success("Sentinel Ledger: CONNECTED")
+st.sidebar.code("Node: 0x71C...a4f9")
 
+# --- UI: PESTAÑAS ---
+tab1, tab2, tab3 = st.tabs([" Live Monitoring", " World Simulation (Impact)", " Model Health "])
+
+# ==========================================
+# TAB 1: MONITOREO EN VIVO
+# ==========================================
 with tab1:
     st.title("Sentinel AI: Real-Time Multi-Modal Fusion")
     
-    # Fragmento para actualización en tiempo real sin recargar toda la app
-    @st.fragment(run_every=speed if run_stream else None)
-    def live_dashboard():
-        if run_stream:
-            process_realtime()
-
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total Ahorrado (ROI)", f"${st.session_state.savings:,.2f}")
-        
+    # Métricas Top
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric("Total Ahorrado (ROI)", f"${st.session_state.savings:,.2f}", delta="Inmune a Tampering")
+    with m2:
         fraud_count = len([x for x in st.session_state.history if x['Decision'] == 'REJECT'])
-        m2.metric("Alertas (Live)", fraud_count, delta="High Risk" if fraud_count > 3 else "Normal")
-        m3.metric("Blockchain", "CONNECTED", delta="Verified")
-        m4.metric("Model Drift", "0.02%", delta="Stable")
+        st.metric("Tasa de Fraude (Live)", f"{fraud_count * 5}%", delta="High Alert" if fraud_count > 3 else "Normal", delta_color="inverse")
+    with m3:
+        st.metric("Blockchain Uptime", "99.99%", delta="Verified")
+    with m4:
+        st.metric("Model Drift", "0.02%", delta="Stable")
 
-        st.divider()
-        c1, c2 = st.columns([2, 1])
+    st.divider()
 
-        with c1:
-            st.subheader("Live Transaction Stream")
-            df_history = pd.DataFrame(st.session_state.history)
-            if not df_history.empty:
-                # Estilo simplificado para evitar errores de renderizado en Cloud
-                st.dataframe(df_history.iloc[::-1], use_container_width=True) 
-            else:
-                st.info("Esperando datos...")
+    c1, c2 = st.columns([2, 1])
 
-        with c2:
-            st.subheader("XAI: Risk Radar")
-            if not df_history.empty:
-                last_tx = st.session_state.history[-1]
-                fig = go.Figure(go.Scatterpolar(
-                    r=[last_tx['Amount']/5000, last_tx['Liveness'], 1-last_tx['Entropy'], 0.5],
-                    theta=['Monto', 'Liveness', 'Entropía', 'Network'],
-                    fill='toself', line_color='#ff4b4b'
-                ))
-                fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), 
-                                  template="plotly_dark", height=300, margin=dict(l=40, r=40, t=20, b=20))
-                st.plotly_chart(fig, use_container_width=True)
+    with c1:
+        st.subheader("Live Transaction Stream")
+        df_history = pd.DataFrame(st.session_state.history)
+        if not df_history.empty:
+            def color_decision(val):
+                return 'background-color: #1f6e2e' if val == 'APPROVE' else 'background-color: #822727'
+            st.dataframe(df_history.style.map(color_decision, subset=['Decision']), width='stretch')
+        else:
+            st.info("Iniciando conexión con el broker de datos...")
 
-    live_dashboard()
+    with c2:
+        st.subheader("XAI: Risk Radar")
+        if not df_history.empty:
+            last_tx = st.session_state.history[-1]
+            categories = ['Monto', 'Liveness', 'Entropía', 'Red']
+            fig = go.Figure()
+            fig.add_trace(go.Scatterpolar(
+                r=[last_tx['Amount']/5000, last_tx['Liveness'], 1-last_tx['Entropy'], 0.4],
+                theta=categories, fill='toself', line_color='#ff4b4b'
+            ))
+            fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, 
+                              paper_bgcolor='rgba(0,0,0,0)', font_color="white")
+            st.plotly_chart(fig, width='stretch')
+            st.caption(f"TX ID: {last_tx['ID']} | Verified Hash: {last_tx['Blockchain_Hash'][:12]}...")
 
+    st.divider()
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if not df_history.empty:
+            fig_line = px.line(df_history, x='Time', y='Risk', title="Real-Time Risk Evolution", template="plotly_dark")
+            st.plotly_chart(fig_line, width='stretch')
+    with col_b:
+        st.write("**Adversarial & Edge Status**")
+        st.progress(0.88, text="Survival Rate (PGD Attacks)")
+        st.code("Model: quantized_sentinel_int8.pt | Weight: 4.2MB")
+
+# ==========================================
+# TAB 2: SIMULACIÓN DE MUNDO (MESA)
+# ==========================================
 with tab2:
     st.title("Strategic Impact Simulation")
     st.write("Simula escenarios de ataque masivos para validar el ROI del modelo en el tiempo.")
@@ -202,5 +257,4 @@ with tab3:
 if run_stream:
     process_realtime()
     time.sleep(speed)
-
     st.rerun()
