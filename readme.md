@@ -40,9 +40,9 @@ Asegúrate de tener Docker instalado y ejecuta:
 
 ```bash
 # Clonar el repositorio
-git clone [https://github.com/tu-usuario/sentinel-ai.git](https://github.com/tu-usuario/sentinel-ai.git)
-cd sentinel-ai
+git clone [https://github.com/alvarez1lucas/fraud-risk.git](https://github.com/alvarez1lucas/fraud-risk.git)
+cd fraud-risk
 
 # Levantar la infraestructura completa (API + Dashboard)
-
 docker-compose up --build
+
