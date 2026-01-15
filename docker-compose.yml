@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # 1. El motor de Inteligencia (FastAPI)
+  sentinel-engine:
+    build: .
+    container_name: sentinel-api
+    command: uvicorn app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - MODEL_VERSION=2.6_MULTIMODAL
+      - BLOCKCHAIN_MODE=SIMULATED
+    restart: unless-stopped
+
+  # 2. La interfaz de comando (Streamlit)
+  sentinel-dashboard:
+    build: .
+    container_name: sentinel-frontend
+    command: streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    depends_on:
+      - sentinel-engine
+    environment:
+      - API_URL=http://sentinel-engine:8000
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+networks:
+  default:
+    name: sentinel-network
