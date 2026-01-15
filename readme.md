@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/tu-usuario/sentinel-ai/graphs/commit-activity)
 
-![Sentinel AI Live Demo](Animation.GIF)
+![Sentinel AI Live Demo](Animation.gif)
 
 **Sentinel AI** es una infraestructura de grado bancario para la detección de fraude en tiempo real. Resuelve el problema de la **Identidad Sintética** y el **Fraude Generativo** mediante una arquitectura de Fusión Neuronal que combina biometría, topología de red y auditoría inmutable.
 
@@ -44,4 +44,5 @@ git clone [https://github.com/tu-usuario/sentinel-ai.git](https://github.com/tu-
 cd sentinel-ai
 
 # Levantar la infraestructura completa (API + Dashboard)
+
 docker-compose up --build
